@@ -983,14 +983,26 @@ import Note from './components/Note'
 
 //Ex:35 form 
 import React, { useState } from 'react'
-
+import { useQuery } from '@tanstack/react-query';
+const getperson=async()=>{
+  await new Promise((resolve) => setTimeout(resolve, 1000));  
+  const response = await fetch('https://localhost:3001/persons');
+  const data = await response.json()
+  return data
+}
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas', number: '123-456789' },
-    { name: 'Ada Lovelace', number: '39-44-5323523' },
-    { name: 'Dan Abramov', number: '12-43-234345' },
-    { name: 'Mary Poppendieck', number: '39-23-6423122' }
-  ])
+  // const [persons, setPersons] = useState([
+  //   { name: 'Arto Hellas', number: '123-456789' },
+  //   { name: 'Ada Lovelace', number: '39-44-5323523' },
+  //   { name: 'Dan Abramov', number: '12-43-234345' },
+  //   { name: 'Mary Poppendieck', number: '39-23-6423122' }
+  // ])
+
+  const { data ,isLoading,refetch,error} = useQuery({
+      queryKey : ['person'],
+      queryFn  : getperson,
+    })
+    console.log(data)
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [searchTerm, setSearchTerm] = useState('')

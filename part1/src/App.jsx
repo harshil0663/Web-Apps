@@ -91,12 +91,7 @@ const App = () => {
       important: Math.random() > 0.5,
       id: String(notes.length + 1),
     }
-    noteService
-      .create(noteObject)
-      .then(response => {
-        setNotes(notes.concat(response.data))
-        setNewNote('')
-      })
+  
     
     // Send the new note to the server
     axios
@@ -109,6 +104,7 @@ const App = () => {
         console.error('Error adding note:', error);
       });
   };
+  
 
   // Handle input change
   const handleInputChange = (event) => {
@@ -130,8 +126,14 @@ const App = () => {
       <h3>All Notes</h3>
       <ul>
         {notes.map((note) => (
-          <Note key={note.id} note={note} toggleImportance={() => toggleImportanceOf(note.id)}/>
-        ))}
+          <Note
+            key={note.id}
+            note={note}
+            toggleImportance={() => toggleImportanceOf(note.id)}
+          />
+        ))
+
+        }
       </ul>
     </div>
   )

@@ -3,10 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Loader } from 'lucide-react';
 
+
 const fetchCountries = async () => {
   const { data } = await axios.get("https://studies.cs.helsinki.fi/restcountries/api/all");
   return data;
 };
+const fetchweather = async (lat,lon) => {
+  const API_KEY = import.meta.env.VITE_WEATHER_API_KEY;
+  const  responce = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+  // console.log(responce.data)
+
+  return responce.data;
+}
 
 const App = () => {
   return <CountrySearch />;
@@ -21,14 +29,24 @@ const CountrySearch = () => {
     queryFn: fetchCountries,
   });
 
-  if (isLoading) return <Loader size="2em" />;
-  if (error) return <p>Error: {error.message}</p>;
 
   const filteredCountries = query
     ? countries.filter((country) =>
         country.name.common.toLowerCase().includes(query.toLowerCase())
       )
     : [];
+// console.log(filteredCountries);
+const { data: weather, error:weathererror, isLoading:weatherloading } = useQuery({
+  queryKey: ["weather"],
+  queryFn: () => fetchweather(filteredCountries[0].latlng[0], filteredCountries[0].latlng[1]),
+  enabled: filteredCountries.length === 1
+  
+});
+// console.log(filteredCountries[0]?.latlng[0], filteredCountries[0]?.latlng[1])
+// console.log("weather "+weather)
+
+if (isLoading) return <Loader size="2em" />;
+if (error) return <p>Error: {error.message}</p>;
 
   return (
     <div>
@@ -47,7 +65,8 @@ const CountrySearch = () => {
       {filteredCountries.length > 10 ? (
         <p>Too many matches, specify another filter</p>
       ) : filteredCountries.length === 1 ? (
-        <CountryDetails country={filteredCountries[0]} />
+        <CountryDetails country={filteredCountries[0]} temp={weather?.main?.temp} wind={weather?.wind?.speed} icon={weather?.weather[0]?.icon}/>
+
       ) : (
         <ul>
           {filteredCountries.map((country) => (
@@ -64,8 +83,10 @@ const CountrySearch = () => {
   );
 };
 
-const CountryDetails = ({ country }) => {
+const CountryDetails= ({ country,temp,wind,icon}) => {
+  
   return (
+    
     <div>
       <h1>{country.name.common}</h1>
       <p><strong>Capital:</strong> {country.capital?.[0] || "N/A"}</p>
@@ -80,6 +101,12 @@ const CountryDetails = ({ country }) => {
       </ul>
 
       <img src={country.flags.svg} alt={`Flag of ${country.name.common}`} width="150" />
+      <br />
+      <h1>Weather of {country.name.common}</h1>
+      <p><strong>Temperature:</strong> {temp}</p>
+      <p><strong>Wind:</strong> {wind}</p>
+      <img src={`https://openweathermap.org/img/wn/${icon}.png`} alt="weather icon" width={80} />
+
     </div>
   );
 };

@@ -5,8 +5,8 @@ import { Loader2 } from 'lucide-react';
 import { queryClient } from "./main";
 
 const getPersons = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 1500));  
-  const { data } = await axios.get("http://localhost:3001/persons");
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const { data } = await axios.get("http://localhost:3001/api/persons");
   return data;
 };
 
@@ -26,9 +26,10 @@ const useDebounce = (value, delay) => {
 
 const formatPhoneNumber = (number) => {
   const cleaned = number.replace(/\D/g, "").slice(0, 10);
-  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+  const match = cleaned.match(/^(\d{2,3})-(\d{8})$/);
+
   if (!match) return number;
-  return [match[1], match[2], match[3]].filter(Boolean).join("-");
+  return [match[1], match[2]].filter(Boolean).join("-");
 };
 
 const App = () => {
@@ -46,12 +47,28 @@ const App = () => {
   if (isLoading) return <Loader2 />;
 
   const validatePhoneNumber = (number) => {
-    const phoneregex = /^[0-9]{3}-[0-9]{3}-[0-9]{4}$/;
+    const phoneregex = /^\d{2,3}-\d{6,8}$/;
     return phoneregex.test(number);
   };
 
   const handlePhoneNumberChange = (e) => {
-    setNewNumber(formatPhoneNumber(e.target.value));
+    let input = e.target.value;
+
+    input = input.replace(/\D/g, '');
+
+    if (input.length > 11) {
+      input = input.slice(0, 11);
+    }
+
+    let formattedNumber = '';
+
+    if (input.length <= 10) {
+      formattedNumber = input.replace(/^(\d{2})(\d{0,8})$/, '$1-$2');
+    } else {
+      formattedNumber = input.replace(/^(\d{3})(\d{0,8})$/, '$1-$2');
+    }
+
+    setNewNumber(formattedNumber);
   };
 
   const showNotification = (message) => {
@@ -68,16 +85,22 @@ const App = () => {
 
     const existingPerson = persons.find((p) => p.name === newName);
 
-    if (existingPerson) {
-      if (window.confirm(`${newName} already exists. Update the number?`)) {
-        const updatedPerson = { ...existingPerson, number: newNumber };
-        await axios.put("http://localhost:3001/persons/" + existingPerson.id, updatedPerson);
-        showNotification(`Updated ${newName}`);
+    try {
+      if (existingPerson) {
+        if (window.confirm(`${newName} already exists. Update the number?`)) {
+          const updatedPerson = { ...existingPerson, number: newNumber };
+          await axios.put("http://localhost:3001/api/persons/" + existingPerson._id, updatedPerson);
+          showNotification(`Updated ${newName}`);
+        }
+      } else {
+        const newPerson = { name: newName, number: newNumber, id: (persons.length + 1) };
+        await axios.post("http://localhost:3001/api/persons", newPerson);
+        showNotification(`Added ${newName}`);
       }
-    } else {
-      const newPerson = { name: newName, number: newNumber, id: String(persons.length + 1) };
-      await axios.post("http://localhost:3001/persons", newPerson);
-      showNotification(`Added ${newName}`);
+    } catch (error) {
+      if (error.response) {
+        showNotification(`Error: ${error.response.data.error}`);
+      }
     }
 
     queryClient.invalidateQueries({ queryKey: ["persons"] });
@@ -87,7 +110,7 @@ const App = () => {
 
   const handleDeletePerson = async (id, name) => {
     if (window.confirm("Delete " + name + " ?")) {
-      await axios.delete("http://localhost:3001/persons/" + id);
+      await axios.delete("http://localhost:3001/api/persons/" + id);
       queryClient.invalidateQueries({ queryKey: ["persons"] });
       showNotification(`Deleted ${name}`);
     }
@@ -101,11 +124,9 @@ const App = () => {
     <div>
       <h2>Phonebook</h2>
       {notification && <div style={{ color: "green" }}>{notification}</div>}
-      
       <div>
         filter shown with <input type="text" value={filter} onChange={(e) => setFilter(e.target.value)} />
       </div>
-      
       <h3>add a new</h3>
       <form onSubmit={handleAddPerson}>
         <div>
@@ -121,8 +142,8 @@ const App = () => {
       <ul>
         {filteredPersons.map((person) => (
           <li key={person.id}>
-            {person.name} {person.number} {" "}
-            <button onClick={() => handleDeletePerson(person.id, person.name)}>delete</button>
+            {person.name} {person.number}{" "}
+            <button onClick={() => handleDeletePerson(person._id, person.name)}>delete</button>
           </li>
         ))}
       </ul>
